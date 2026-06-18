@@ -1,0 +1,118 @@
+{
+  "Polar Pilsen Bot. 222ml": {
+    "box": "/products/VE/Polar_Pilsen_Bot._222ml_box.png",
+    "unit": "/products/VE/Polar_Pilsen_Bot._222ml_unit.png"
+  },
+  "Polar Pilsen Bot. 330ml": {
+    "box": "/products/VE/Polar_Pilsen_Bot._330ml_box.png",
+    "unit": "/products/VE/Polar_Pilsen_Bot._330ml_unit.png"
+  },
+  "Polar Pilsen Lata 250ml": {
+    "unit": "/products/VE/Polar_Pilsen_Lata_250ml_unit.jpg"
+  },
+  "Polar Pilsen Lata 355ml": {
+    "unit": "/products/VE/Polar_Pilsen_Lata_355ml_unit.png",
+    "box": "/products/VE/Polar_Pilsen_Lata_355ml_box.png",
+    "sixpack": "/products/VE/Polar_Pilsen_Lata_355ml_sixpack.png"
+  },
+  "Polar Light Bot. 222ml": {
+    "box": "/products/VE/Polar_Light_Bot._222ml_box.png",
+    "unit": "/products/VE/Polar_Light_Bot._222ml_unit.png"
+  },
+  "Polar Light Bot. 355ml": {
+    "unit": "/products/VE/Polar_Light_Bot._355ml_unit.png"
+  },
+  "Polar Light Lata 250ml": {
+    "sixpack": "/products/VE/Polar_Light_Lata_250ml_sixpack.png",
+    "unit": "/products/VE/Polar_Light_Lata_250ml_unit.png"
+  },
+  "Polar Light Lata 355ml": {
+    "unit": "/products/VE/Polar_Light_Lata_355ml_unit.png"
+  },
+  "Solera Light (Azul) Lata 250ml": {
+    "unit": "/products/VE/Solera_Light_Azul_Lata_250ml_unit.jpg"
+  },
+  "Regional Pilsen Bot. 222ml": {
+    "box": "/products/VE/Regional_Pilsen_Bot._222ml_box.png"
+  },
+  "Regional Pilsen Lata 355ml": {
+    "box": "/products/VE/Regional_Pilsen_Lata_355ml_box.png",
+    "unit": "/products/VE/Regional_Pilsen_Lata_355ml_unit.png"
+  },
+  "Morena Bot. 222ml": {
+    "box": "/products/VE/Morena_Bot._222ml_box.png"
+  },
+  "Morena Lata 355ml": {
+    "box": "/products/VE/Morena_Lata_355ml_box.png",
+    "unit": "/products/VE/Morena_Lata_355ml_unit.jpg"
+  },
+  "Zulia Bot. 222ml": {
+    "unit": "/products/VE/Zulia_Bot._222ml_unit.png"
+  },
+  "Zulia Bot. 250ml": {
+    "box": "/products/VE/Zulia_Bot._250ml_box.png"
+  },
+  "Zulia Lata 295ml": {
+    "box": "/products/VE/Zulia_Lata_295ml_box.png",
+    "unit": "/products/VE/Zulia_Lata_295ml_unit.png"
+  },
+  "Cardenal Lata 250ml": {
+    "box": "/products/VE/Cardenal_Lata_250ml_box.png"
+  },
+  "Heineken Bot. 330ml": {
+    "sixpack": "/products/VE/Heineken_Bot._330ml_sixpack.jpg"
+  },
+  "Heineken Lata 330ml": {
+    "unit": "/products/VE/Heineken_Lata_330ml_unit.png",
+    "sixpack": "/products/VE/Heineken_Lata_330ml_sixpack.jpg"
+  },
+  "Corona Extra Bot. 355ml": {
+    "sixpack": "/products/VE/Corona_Extra_Bot._355ml_sixpack.png"
+  },
+  "Coronita Bot. 210ml": {
+    "unit": "/products/VE/Coronita_Bot._210ml_unit.png",
+    "sixpack": "/products/VE/Coronita_Bot._210ml_sixpack.png"
+  },
+  "Modelo Especial Bot. 355ml": {
+    "unit": "/products/VE/Modelo_Especial_Bot._355ml_unit.png",
+    "sixpack": "/products/VE/Modelo_Especial_Bot._355ml_sixpack.png"
+  },
+  "Modelo Especial Lata 355ml": {
+    "unit": "/products/VE/Modelo_Especial_Lata_355ml_unit.png",
+    "sixpack": "/products/VE/Modelo_Especial_Lata_355ml_sixpack.png"
+  },
+  "Negra Modelo Bot. 355ml": {
+    "unit": "/products/VE/Negra_Modelo_Bot._355ml_unit.png",
+    "sixpack": "/products/VE/Negra_Modelo_Bot._355ml_sixpack.png"
+  },
+  "Stella Artois Bot. 330ml": {
+    "unit": "/products/VE/Stella_Artois_Bot._330ml_unit.png",
+    "sixpack": "/products/VE/Stella_Artois_Bot._330ml_sixpack.png"
+  },
+  "Stella Artois Lata 330ml": {
+    "unit": "/products/VE/Stella_Artois_Lata_330ml_unit.png"
+  },
+  "Estrella Galicia Especial Bot. 330ml": {
+    "box": "/products/VE/Estrella_Galicia_Especial_Bot._330ml_box.jpg"
+  },
+  "Budweiser Bot. 355ml": {
+    "unit": "/products/VE/Budweiser_Bot._355ml_unit.jpg",
+    "box": "/products/VE/Budweiser_Bot._355ml_box.jpg"
+  },
+  "Presidente Bot. 355ml": {
+    "unit": "/products/VE/Presidente_Bot._355ml_unit.png",
+    "sixpack": "/products/VE/Presidente_Bot._355ml_sixpack.png"
+  },
+  "Presidente Lata 237ml": {
+    "box": "/products/VE/Presidente_Lata_237ml_box.png",
+    "unit": "/products/VE/Presidente_Lata_237ml_unit.png",
+    "sixpack": "/products/VE/Presidente_Lata_237ml_sixpack.png"
+  },
+  "Presidente Lata 355ml": {
+    "unit": "/products/VE/Presidente_Lata_355ml_unit.png"
+  },
+  "Presidente Light Lata 237ml": {
+    "unit": "/products/VE/Presidente_Light_Lata_237ml_unit.png",
+    "sixpack": "/products/VE/Presidente_Light_Lata_237ml_sixpack.png"
+  }
+}

@@ -1,0 +1,190 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap');
+
+:root {
+  --e-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --e-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --e-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
+  /* Paleta */
+  --bg: #FBF8F1;
+  --surface: #FFFDF8;
+  --surface-alt: #F2EDE0;
+  --cream: #F6F0E2;
+  --primary: #C68A12;
+  --primary-dim: #A2700B;
+  --primary-soft: #FAEDCE;
+  --ink: #26303A;
+  --ink-soft: #3E4B57;
+  --navy: #2C4256;
+  --text-med: #5C6770;
+  --text-low: #97A0A8;
+  --border: #E8E0CF;
+  --white: #FFFEFB;
+  --success: #2C9D63;
+  --success-soft: #E3F4EA;
+  --warn: #DD9426;
+  --warn-soft: #FBEFD4;
+  --danger: #D5443D;
+  --danger-soft: #FAE5E3;
+  --info: #3D83C2;
+  --info-soft: #E4F0F8;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; }
+html, body, #root { height: 100%; }
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #E0D7C3; border-radius: 3px; }
+button { font-family: inherit; }
+input, textarea, select { font-family: inherit; }
+
+/* Animaciones */
+.anim-screen { animation: scrIn .28s var(--e-out) both; }
+@keyframes scrIn { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+
+.rise { animation: rise .42s var(--e-out) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+.fade { animation: fade .3s var(--e-out) both; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+.pop { animation: pop .26s var(--e-out) both; }
+@keyframes pop { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: scale(1); } }
+
+.toast-in { animation: toastIn .34s var(--e-expo) both; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(20px) scale(.97); } to { opacity: 1; transform: none; } }
+
+.press { transition: transform .14s var(--e-out); }
+.press:active { transform: scale(.97); }
+
+.lift { transition: transform .2s var(--e-out), box-shadow .2s var(--e-out); }
+@media (hover: hover) and (pointer: fine) {
+  .lift:hover { transform: translateY(-3px); }
+  .row-link:hover { transform: translateY(-2px); }
+  .back-btn:hover { transform: translateX(-2px); }
+}
+
+.bar-fill { animation: barFill 1s var(--e-out) both; }
+@keyframes barFill { from { width: 0; } to { width: var(--w); } }
+
+.spin { animation: spin .9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.scan { animation: scan 1.1s var(--e-in-out) infinite; }
+@keyframes scan { 0% { transform: translateX(-110%); } 100% { transform: translateX(360%); } }
+
+.pulse-ring { animation: pulseRing 2.4s var(--e-in-out) infinite; }
+@keyframes pulseRing {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.08); }
+}
+
+.drop-in { animation: dropIn .4s var(--e-out) both; }
+@keyframes dropIn {
+  from { opacity: 0; transform: translate(-50%, -115%) scale(.5); }
+  to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+}
+
+.dot-in { animation: dotIn .36s var(--e-out) both; }
+@keyframes dotIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(.4); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.expand { animation: expand .3s var(--e-out) both; }
+@keyframes expand {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 90px; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, var(--surface-alt) 25%, var(--bg) 50%, var(--surface-alt) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, .anim-screen, .rise, .pop, .toast-in, .drop-in, .dot-in {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  .shimmer, .spin, .scan, .pulse-ring { animation: none !important; }
+}
+
+/* ── Animaciones logo eTradeExecution ─────────────────────────────────────── */
+.logo-orbit {
+  transform-box: view-box; transform-origin: 50% 50%;
+  animation: logoOrbit 18s linear infinite;
+}
+.logo-sat {
+  transform-box: view-box; transform-origin: 50% 50%;
+  animation: logoOrbit 7s linear infinite;
+}
+@keyframes logoOrbit { to { transform: rotate(360deg); } }
+
+.logo-bar {
+  transform-box: fill-box; transform-origin: center bottom;
+  animation: logoBar .8s var(--e-expo) both .2s;
+}
+@keyframes logoBar { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+/* barrido ámbar sobre el nombre de marca */
+.brand-grad {
+  background: linear-gradient(100deg, #26303A 25%, #C68A12 48%, #A2700B 52%, #26303A 75%);
+  background-size: 230% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+  animation: brandSweep 5.5s var(--e-in-out) infinite;
+}
+@keyframes brandSweep {
+  0%, 100% { background-position: 115% 0; }
+  50%       { background-position: -15% 0; }
+}
+
+/* flotación suave del logo en login */
+.logo-float { animation: logoFloat 4.5s ease-in-out infinite; }
+@keyframes logoFloat {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-7px); }
+}
+
+/* indicador deslizante de navegación */
+.nav-pill { transition: transform .34s var(--e-out); }
+
+/* pulso check-in en segundo plano */
+.bg-checkin-pulse {
+  animation: bgPulse 1.8s var(--e-in-out) infinite;
+}
+@keyframes bgPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-orbit, .logo-sat, .brand-grad, .logo-float, .bg-checkin-pulse { animation: none !important; }
+  .logo-bar { animation-duration: .01ms !important; }
+}
+
+/* Ola login */
+@keyframes etx-wave { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+@keyframes etx-zoom-away{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(1.48)}}
+@keyframes etx-zoom-in  {from{opacity:0;transform:scale(.82)}to{opacity:1;transform:none}}
+
+/* ── Animación #5 Morphing — botón Confirmar Check-in ─────────────────── */
+@keyframes morphCheckin {
+  0%   { border-radius:12px; transform:scale(1); }
+  30%  { border-radius:50px; transform:scale(.88); }
+  65%  { border-radius:50px; transform:scale(.88); }
+  80%  { border-radius:12px; transform:scale(1.05); }
+  100% { border-radius:12px; transform:scale(1); }
+}
