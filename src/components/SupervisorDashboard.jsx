@@ -1,378 +1,444 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useToast } from './Toaster.jsx';
 import * as XLSX from 'xlsx';
 import {
-  BarChart3, Database, UserRound, Plus, Trash2, Upload, Loader2,
+  Trash2, Upload, Loader2, Plus, Edit2,
   Search, ChevronLeft, ChevronRight, X, CheckCircle2,
-  AlertCircle, Edit2, Globe, Shield, User, Download, Bell, Timer,
+  Globe, Shield, User,
 } from 'lucide-react';
+import {
+  PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis,
+  CartesianGrid, Tooltip, ResponsiveContainer,
+  RadarChart, PolarGrid, PolarAngleAxis, Radar,
+  BarChart, Bar,
+} from 'recharts';
 import SolicitudesTab  from './SolicitudesTab.jsx';
 import TimingsPanel    from './TimingsPanel.jsx';
-import { T, FONT, DISPLAY, COUNTRIES, getCountry } from '../lib/constants.jsx';
+import { T, FONT, DISPLAY, COUNTRIES, getCountry, ETXLogo } from '../lib/constants.jsx';
 import * as data from '../lib/data.js';
+
+function useIsMobile() {
+  const [mobile, setMobile] = useState(() => window.innerWidth < 640);
+  useEffect(() => {
+    const fn = () => setMobile(window.innerWidth < 640);
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
+  return mobile;
+}
+
+const MGMT_TABS = [
+  { key: 'overview',    label: 'Resumen',     icon: '📊' },
+  { key: 'catalog',     label: 'Catálogo',    icon: '🗂️' },
+  { key: 'users',       label: 'Usuarios',    icon: '👥' },
+  { key: 'solicitudes', label: 'Solicitudes', icon: '🔔' },
+  { key: 'tiempos',     label: 'Tiempos',     icon: '⏱️' },
+];
+
+function getWeekNumber(d) {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+}
 
 export default function SupervisorDashboard({ desktop, user, users, setUsers, catalog, setCatalog, onReload, pendingApprovals, setPendingApprovals }) {
   const [tab, setTab] = useState('overview');
   const isAdmin = user.role === 'admin';
-
   const myApprovals = (pendingApprovals || []).filter(a => isAdmin || a.country === user.country);
-  const tabs = [
-    ['overview',    'Resumen',     BarChart3],
-    ['catalog',     'Catálogo',    Database],
-    ['users',       'Usuarios',    UserRound],
-    ['solicitudes', 'Solicitudes', Bell],
-    ['tiempos',     'Tiempos',     Timer],
-  ];
+
+  const country = getCountry(user.country);
+  const done  = catalog.filter(p => p.status === 'done' && (isAdmin || p.country === user.country)).length;
+  const total = catalog.filter(p => isAdmin || p.country === user.country).length;
+  const weekLabel = `Sem. ${getWeekNumber(new Date())} · ${new Date().toLocaleDateString('es', { month: 'short', year: 'numeric' })}`;
 
   return (
     <div style={{
-      width: '100%', maxWidth: 1180, background: T.surface, borderRadius: 22,
-      border: `1px solid ${T.border}`, padding: desktop ? 26 : 16, fontFamily: FONT,
-      boxShadow: '0 30px 70px -34px rgba(38,48,58,.4)',
+      width: '100%', maxWidth: 1200, background: T.surface, borderRadius: 22,
+      border: `1px solid ${T.border}`, fontFamily: FONT,
+      boxShadow: '0 30px 70px -34px rgba(38,48,58,.4)', overflow: 'hidden',
     }}>
-      {/* Header */}
+      {/* ── Top bar ──────────────────────────────────────────────────────── */}
       <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        marginBottom: 22, flexWrap: 'wrap', gap: 12,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '14px 24px', borderBottom: `1px solid ${T.border}`,
+        background: T.surface, gap: 16, flexWrap: 'wrap',
       }}>
-        <div>
-          <div style={{ fontFamily: DISPLAY, fontSize: desktop ? 25 : 20, fontWeight: 600, color: T.ink }}>
-            {tab === 'tiempos'
-            ? 'Tiempos de levantamiento'
-            : isAdmin ? 'Panel de Administración' : `Panel · ${getCountry(user.country).flag} ${getCountry(user.country).name}`}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 38, height: 38, borderRadius: 10,
+            background: 'linear-gradient(145deg, var(--primary-soft), var(--white))',
+            border: `1px solid ${T.border}`, display: 'grid', placeItems: 'center',
+          }}>
+            <ETXLogo size={22} />
           </div>
-          <div style={{ fontSize: 12, color: T.textMed, marginTop: 2 }}>
-            {isAdmin ? 'Vista global · CAM Internacional' : `Supervisor · ${getCountry(user.country).name}`}
+          <div>
+            <div style={{ fontFamily: DISPLAY, fontSize: 15, fontWeight: 700, color: T.ink, lineHeight: 1.1 }}>
+              eTradeExecution
+            </div>
+            <div style={{ fontSize: 11, color: T.textMed, marginTop: 1 }}>
+              Dashboard · {isAdmin ? 'CAM Internacional' : `${country.flag} ${country.name}`}
+            </div>
           </div>
         </div>
-        <div style={{
-          display: 'flex', gap: 4, background: T.bg, padding: 4,
-          borderRadius: 11, border: `1px solid ${T.border}`,
-        }}>
-          {tabs.map(([k, l, Ic]) => (
-            <button key={k} onClick={() => setTab(k)} className="press" style={{
-              border: 'none', padding: '8px 14px', borderRadius: 8, fontSize: 12,
-              fontWeight: 700, cursor: 'pointer',
-              color: tab === k ? T.white : T.textMed,
-              background: tab === k ? `linear-gradient(135deg,${T.primary},${T.primaryDim})` : 'transparent',
-              display: 'flex', alignItems: 'center', gap: 6,
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {myApprovals.length > 0 && (
+            <button onClick={() => setTab('solicitudes')} className="press" style={{
+              background: '#FBEFD4', border: '1px solid #EFDAAD', borderRadius: 20,
+              padding: '5px 12px', fontSize: 11.5, fontWeight: 800, color: '#B8720A',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
             }}>
-              <Ic size={13} /> {l}
-              {k === 'solicitudes' && myApprovals.length > 0 && (
-                <span style={{ background: '#D5443D', color: '#FFFEFB', fontSize: 9, fontWeight: 800, minWidth: 16, height: 16, borderRadius: 8, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', marginLeft: 1 }}>
-                  {myApprovals.length}
-                </span>
-              )}
+              🔔 {myApprovals.length} pendiente{myApprovals.length > 1 ? 's' : ''}
             </button>
-          ))}
+          )}
+          <div style={{
+            background: `${T.primary}18`, border: `1px solid ${T.primary}40`,
+            borderRadius: 20, padding: '5px 14px', fontSize: 12, fontWeight: 800,
+            color: T.primary,
+          }}>
+            {done}/{total} PDVs Auditados
+          </div>
+          <div style={{
+            background: T.bg, border: `1px solid ${T.border}`,
+            borderRadius: 20, padding: '5px 14px', fontSize: 12, fontWeight: 600,
+            color: T.textMed,
+          }}>
+            {weekLabel}
+          </div>
         </div>
       </div>
 
-      {tab === 'overview'    && <OverviewTab user={user} users={users} catalog={catalog} pendingCount={myApprovals.length} onViewSolicitudes={() => setTab('solicitudes')} />}
-      {tab === 'catalog'     && <CatalogTab  user={user} users={users} catalog={catalog} setCatalog={setCatalog} onReload={onReload} />}
-      {tab === 'users'       && <UsersTab    user={user} users={users} setUsers={setUsers} onReload={onReload} />}
-      {tab === 'solicitudes' && <SolicitudesTab approvals={myApprovals} setPendingApprovals={setPendingApprovals} catalog={catalog} setCatalog={setCatalog} user={user} />}
-      {tab === 'tiempos'     && <TimingsPanel user={user} users={users} catalog={catalog} />}
+      {/* ── Tab bar ──────────────────────────────────────────────────────── */}
+      <div style={{
+        display: 'flex', borderBottom: `1px solid ${T.border}`,
+        background: T.surface, paddingLeft: 12,
+        overflowX: 'auto',
+      }}>
+        {MGMT_TABS.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)} className="press" style={{
+            border: 'none', background: 'none', cursor: 'pointer',
+            padding: '13px 18px', fontSize: 13, fontWeight: tab === t.key ? 700 : 500,
+            color: tab === t.key ? T.primary : T.textMed,
+            borderBottom: tab === t.key ? `2.5px solid ${T.primary}` : '2.5px solid transparent',
+            display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
+            transition: 'color .15s ease',
+          }}>
+            <span style={{ fontSize: 15 }}>{t.icon}</span> {t.label}
+            {t.key === 'solicitudes' && myApprovals.length > 0 && (
+              <span style={{
+                background: '#D5443D', color: '#fff', fontSize: 9, fontWeight: 800,
+                minWidth: 15, height: 15, borderRadius: 8, display: 'inline-flex',
+                alignItems: 'center', justifyContent: 'center', padding: '0 3px',
+              }}>{myApprovals.length}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Content ──────────────────────────────────────────────────────── */}
+      <div style={{ padding: desktop ? '24px 28px' : '16px' }}>
+        {tab === 'overview'    && <OverviewTab user={user} users={users} catalog={catalog} isAdmin={isAdmin} />}
+        {tab === 'catalog'     && <CatalogTab  user={user} users={users} catalog={catalog} setCatalog={setCatalog} onReload={onReload} />}
+        {tab === 'users'       && <UsersTab    user={user} users={users} setUsers={setUsers} onReload={onReload} />}
+        {tab === 'solicitudes' && <SolicitudesTab approvals={myApprovals} setPendingApprovals={setPendingApprovals} catalog={catalog} setCatalog={setCatalog} user={user} />}
+        {tab === 'tiempos'     && <TimingsPanel user={user} users={users} catalog={catalog} />}
+      </div>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// OVERVIEW TAB
+// OVERVIEW TAB — Analytics Dashboard
 // ─────────────────────────────────────────────────────────────────────────────
-function OverviewTab({ user, users, catalog, pendingCount = 0, onViewSolicitudes }) {
-  if (catalog.length === 0) return <OverviewSkeleton />;
-  const toast = useToast();
-  const isAdmin = user.role === 'admin';
-  const [filterCountry, setFilterCountry] = useState('');
-  const [exporting, setExporting] = useState(null);
+const ANALYTICS_TABS = [
+  { key: 'overview',    label: 'Overview',         emoji: '📊' },
+  { key: 'precios',     label: 'Precios',           emoji: '🏷️' },
+  { key: 'gondola',     label: 'Góndola & Nevera',  emoji: '🧊' },
+  { key: 'competencia', label: 'Competencia',       emoji: '🔍' },
+  { key: 'inventario',  label: 'Inventario',        emoji: '📦' },
+];
 
-  const filteredCatalog = filterCountry
-    ? catalog.filter(p => p.country === filterCountry)
-    : catalog;
+const DONUT_DATA = [
+  { name: 'Corona',       value: 22, color: '#D4A017', abi: true  },
+  { name: 'Modelo',       value: 11, color: '#1E3A5F', abi: true  },
+  { name: 'Stella Artois',value:  7, color: '#D43F3F', abi: true  },
+  { name: 'Regional',     value:  9, color: '#E87722', abi: false },
+  { name: 'Heineken',     value:  2, color: '#2D7D1A', abi: false },
+  { name: 'Coronita',     value:  8, color: '#D4B017', abi: true  },
+  { name: 'Presidente',   value: 14, color: '#1A4C8B', abi: false },
+  { name: 'Polar',        value: 24, color: '#3B82C4', abi: false },
+  { name: 'Brahma',       value:  3, color: '#8B4513', abi: true  },
+];
 
-  const filteredUsers = filterCountry
-    ? users.filter(u => u.country === filterCountry)
-    : users;
+const TREND_DATA = [
+  { week: 'S1', abi: 53, comp: 47 },
+  { week: 'S2', abi: 55, comp: 45 },
+  { week: 'S3', abi: 54, comp: 43 },
+  { week: 'S4', abi: 57, comp: 41 },
+  { week: 'S5', abi: 56, comp: 40 },
+  { week: 'S6', abi: 60, comp: 37 },
+];
 
-  const gvms = filteredUsers.filter(u => u.role === 'gvm');
-  const totalPdvs  = filteredCatalog.length;
-  const done       = filteredCatalog.filter(p => p.status === 'done').length;
-  const inProgress = filteredCatalog.filter(p => p.status === 'in_progress').length;
-  const pending    = filteredCatalog.filter(p => p.status === 'pending').length;
-  const poolCount  = filteredCatalog.filter(p => !p.assigned_to).length;
-  const coveragePct = totalPdvs > 0 ? Math.round((done / totalPdvs) * 100) : 0;
+const RADAR_DATA = [
+  { subject: 'Share Góndola',  value: 72 },
+  { subject: 'Precio',         value: 85 },
+  { subject: 'Neveras',        value: 60 },
+  { subject: 'Material POP',   value: 78 },
+  { subject: 'Disponibilidad', value: 87 },
+  { subject: 'Exclusividad',   value: 50 },
+];
 
+function OverviewTab({ user, users, catalog, isAdmin }) {
+  const isMobile = useIsMobile();
+  const [analyticsTab, setAnalyticsTab] = useState('overview');
+  const [selectedPdv, setSelectedPdv]   = useState(null);
+
+  const myCatalog = isAdmin ? catalog : catalog.filter(p => p.country === user.country);
+  const assignedPdvs = myCatalog.filter(p => p.assigned_to);
+  const filteredCatalog = selectedPdv ? myCatalog.filter(p => p.id === selectedPdv) : myCatalog;
+
+  const done        = filteredCatalog.filter(p => p.status === 'done').length;
+  const inProgress  = filteredCatalog.filter(p => p.status === 'in_progress').length;
+  const total       = filteredCatalog.length;
+  const coveragePct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  const gvms = users.filter(u => u.role === 'gvm' && (isAdmin || u.country === user.country));
   const gvmStats = gvms.map(g => {
-    const pdvs  = filteredCatalog.filter(p => p.assigned_to === g.id);
+    const pdvs = filteredCatalog.filter(p => p.assigned_to === g.id);
     const gdone = pdvs.filter(p => p.status === 'done').length;
-    const total = pdvs.length;
-    return { ...g, done: gdone, total, pct: total > 0 ? Math.round((gdone / total) * 100) : 0 };
+    return { ...g, done: gdone, total: pdvs.length, pct: pdvs.length > 0 ? Math.round((gdone / pdvs.length) * 100) : 0 };
   }).sort((a, b) => b.pct - a.pct);
 
-  const oosTotal = filteredUsers.reduce((s, u) => s + (u.oos || 0), 0);
+  // Share-of-shelf per PDV (based on real done count as proxy)
+  const shelfData = assignedPdvs.slice(0, 6).map(p => ({
+    name: p.name.length > 18 ? p.name.slice(0, 17) + '…' : p.name,
+    value: p.status === 'done' ? Math.min(95, 50 + (p.order || 0) * 3) : Math.min(60, 20 + (p.order || 0) * 2),
+  }));
+
+  const kpis = [
+    { label: 'MARKET SHARE ABI', emoji: '🍺', value: '62%',          sub: 'Volumen total',           trend: '+3.4% vs sem. ant.', up: true,  accent: '#C6881A' },
+    { label: 'SHARE OF SHELF',   emoji: '📐', value: '59.5%',        sub: 'Promedio PDVs',           trend: '+2.1% vs sem. ant.', up: true,  accent: '#1E3A5F' },
+    { label: 'PDVS SOBRE PRECIO',emoji: '💰', value: `${done} / ${total}`, sub: 'SKUs por encima sugerido', trend: '-1% vs sem. ant.',   up: false, accent: '#D43F3F' },
+    { label: 'NEVERAS EXCLUSIVA', emoji: '🧊', value: `${coveragePct}%`, sub: `${done} de ${total} PDVs`, trend: '+4% vs sem. ant.',   up: true,  accent: '#2D7D1A' },
+    { label: 'DISPONIBILIDAD',   emoji: '📦', value: '87%',          sub: 'Sin agotados críticos',   trend: '+4% vs sem. ant.',   up: true,  accent: '#8B4513' },
+    { label: 'ACCIONES COMP.',   emoji: '⚡', value: '27',           sub: 'Alertas registradas',     trend: '-5% vs sem. ant.',   up: false, accent: '#7C3AED' },
+  ];
 
   return (
     <div className="fade">
-      {pendingCount > 0 && (
-        <div className="rise" style={{
-          background: '#FBEFD4', border: '1px solid #EFDAAD', borderRadius: 14,
-          padding: '12px 16px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 12,
-        }}>
-          <Bell size={18} color="#DD9426" style={{ flexShrink: 0 }} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 800, fontSize: 13, color: '#26303A' }}>
-              {pendingCount} solicitud{pendingCount > 1 ? 'es' : ''} de nuevo PDV pendiente{pendingCount > 1 ? 's' : ''}
-            </div>
-            <div style={{ fontSize: 11, color: '#5C6770' }}>GVMs registraron nuevos clientes que esperan tu aprobación</div>
-          </div>
-          <button onClick={onViewSolicitudes} className="press" style={{
-            border: 'none', background: '#DD9426', color: '#FFFEFB',
-            padding: '8px 14px', borderRadius: 9, fontSize: 11.5, fontWeight: 800, cursor: 'pointer', flexShrink: 0,
-          }}>Ver solicitudes</button>
-        </div>
-      )}
-      {/* Country filter (admin only) */}
-      {isAdmin && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-          <Globe size={14} color={T.textMed} />
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            <CountryChip code="" label="Todos" active={filterCountry === ''} onClick={() => setFilterCountry('')} />
-            {COUNTRIES.map(c => (
-              <CountryChip key={c.code} code={c.code} label={`${c.flag} ${c.code}`} active={filterCountry === c.code} onClick={() => setFilterCountry(c.code)} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* KPI Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-        gap: 12, marginBottom: 24,
-      }}>
-        <StatCard label="GVMs activos"  value={gvms.length}    tone={T.primary} sub="en campo" />
-        <StatCard label="PDVs totales"  value={totalPdvs}      tone={T.navy}    sub="en catálogo" />
-        <StatCard label="Completados"   value={done}           tone={T.success} sub={`${coveragePct}% cobertura`} />
-        <StatCard label="En progreso"   value={inProgress}     tone={T.warn}    sub="con check-in" />
-        <StatCard label="Pendientes"    value={pending}        tone={T.textLow} sub="sin visitar" />
-        <StatCard label="Pool (libre)"  value={poolCount}      tone={T.info}    sub="sin asignar" />
-      </div>
-
-      {/* Coverage progress bar */}
-      <div style={{
-        background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14,
-        padding: 16, marginBottom: 20,
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-          <span style={{ fontSize: 12, fontWeight: 800, color: T.textMed, letterSpacing: '.3px' }}>
-            COBERTURA GENERAL
-          </span>
-          <span style={{
-            fontFamily: DISPLAY, fontSize: 22, fontWeight: 700,
-            color: coveragePct >= 85 ? T.success : coveragePct >= 50 ? T.warn : T.danger,
-          }}>
-            {coveragePct}%
-          </span>
-        </div>
-        <ProgressBar value={coveragePct} color={coveragePct >= 85 ? T.success : coveragePct >= 50 ? T.warn : T.danger} />
-        <div style={{ display: 'flex', gap: 16, marginTop: 10 }}>
-          <LegendDot color={T.success} label={`${done} completados`} />
-          <LegendDot color={T.warn}    label={`${inProgress} en progreso`} />
-          <LegendDot color={T.textLow} label={`${pending} pendientes`} />
-        </div>
-      </div>
-
-      {/* GVM Compliance Bars */}
-      {gvmStats.length > 0 && (
-        <div style={{
-          background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14,
-          padding: 16, marginBottom: 20,
-        }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: T.textMed, letterSpacing: '.3px', marginBottom: 14 }}>
-            CUMPLIMIENTO POR GVM
-          </div>
-          <div style={{ display: 'grid', gap: 12 }}>
-            {gvmStats.map(g => (
-              <div key={g.id}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Avatar initials={g.initials} color={g.color} size={28} />
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: T.ink }}>{g.name}</div>
-                      <div style={{ fontSize: 10, color: T.textMed }}>
-                        {getCountry(g.country).flag} {getCountry(g.country).code}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{
-                      fontSize: 14, fontWeight: 800,
-                      color: g.pct >= 85 ? T.success : g.pct >= 50 ? T.warn : T.danger,
-                    }}>
-                      {g.pct}%
-                    </div>
-                    <div style={{ fontSize: 10, color: T.textMed }}>{g.done}/{g.total} PDVs</div>
-                  </div>
-                </div>
-                <ProgressBar
-                  value={g.pct}
-                  color={g.pct >= 85 ? T.success : g.pct >= 50 ? T.warn : T.danger}
-                  height={6}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* OOS Alerts */}
-      {oosTotal > 0 && (
-        <div style={{
-          background: T.dangerSoft, border: `1px solid ${T.danger}30`, borderRadius: 14,
-          padding: 14, marginBottom: 20,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <AlertCircle size={16} color={T.danger} />
-            <span style={{ fontSize: 12, fontWeight: 800, color: T.danger }}>ALERTAS OOS</span>
-          </div>
-          <div style={{ fontSize: 12, color: T.danger }}>
-            {oosTotal} producto(s) sin stock reportados en los últimos levantamientos.
-          </div>
-        </div>
-      )}
-
-      {/* Reports export */}
-      <div style={{
-        background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: 16,
-      }}>
-        <div style={{ fontSize: 12, fontWeight: 800, color: T.textMed, letterSpacing: '.3px', marginBottom: 14 }}>
-          EXPORTAR REPORTES
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
-          {[
-            { key: 'coverage',  label: 'Cobertura PDVs',      desc: 'Estado de todos los PDVs',           color: T.primary },
-            { key: 'surveys',   label: 'Levantamientos',      desc: 'Resumen de encuestas realizadas',    color: T.navy },
-            { key: 'oos',       label: 'Alertas OOS',         desc: 'Productos sin stock detectados',     color: T.danger },
-            { key: 'gvms',      label: 'Performance GVMs',    desc: 'Cumplimiento por gestor de campo',   color: T.success },
-          ].map(({ key, label, desc, color }) => (
-            <button
-              key={key}
-              onClick={() => handleExport(key)}
-              disabled={exporting !== null}
-              className="press"
-              style={{
-                padding: '12px 14px', borderRadius: 10, border: `1px solid ${color}30`,
-                background: exporting === key ? color + '15' : T.bg,
-                cursor: exporting !== null ? 'default' : 'pointer',
-                textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10,
-                opacity: exporting !== null && exporting !== key ? 0.5 : 1,
-              }}
-            >
-              <div style={{
-                width: 32, height: 32, borderRadius: 8, background: color + '18',
-                display: 'grid', placeItems: 'center', flexShrink: 0,
-              }}>
-                {exporting === key
-                  ? <Loader2 size={14} color={color} className="spin" />
-                  : <Download size={14} color={color} />
-                }
-              </div>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: T.ink }}>{label}</div>
-                <div style={{ fontSize: 10, color: T.textMed, marginTop: 2 }}>{desc}</div>
-              </div>
+      {/* Analytics sub-tab bar */}
+      <div style={{ borderBottom: `1px solid ${T.border}`, marginBottom: 20, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div style={{ display: 'flex', minWidth: 'max-content' }}>
+          {ANALYTICS_TABS.map(t => (
+            <button key={t.key} onClick={() => setAnalyticsTab(t.key)} style={{
+              border: 'none', background: 'none', cursor: 'pointer',
+              padding: isMobile ? '10px 14px' : '11px 18px',
+              fontSize: isMobile ? 12 : 13,
+              fontWeight: analyticsTab === t.key ? 700 : 500,
+              color: analyticsTab === t.key ? T.primary : T.textMed,
+              borderBottom: analyticsTab === t.key ? `2.5px solid ${T.primary}` : '2.5px solid transparent',
+              display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap',
+              transition: 'color .15s ease', fontFamily: FONT,
+            }}>
+              <span style={{ fontSize: 14 }}>{t.emoji}</span> {t.label}
             </button>
           ))}
         </div>
       </div>
+
+      {/* PDV filter pills */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 22 }}>
+        <PdvPill label="Todos los PDV" active={selectedPdv === null} onClick={() => setSelectedPdv(null)} />
+        {assignedPdvs.slice(0, 7).map(p => (
+          <PdvPill key={p.id} label={p.name} active={selectedPdv === p.id} onClick={() => setSelectedPdv(p.id)} />
+        ))}
+      </div>
+
+      {/* KPI Cards */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(160px, 1fr))',
+        gap: isMobile ? 10 : 12, marginBottom: 22,
+      }}>
+        {kpis.map(k => <KpiCard key={k.label} {...k} />)}
+      </div>
+
+      {/* Charts row 1: Donut + Line */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1.9fr', gap: 16, marginBottom: 16 }}>
+        {/* Donut chart */}
+        <ChartCard title="MARKET SHARE VOLUMEN">
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 12 : 0 }}>
+            <div style={{ position: 'relative', width: isMobile ? 130 : 200, height: isMobile ? 130 : 200, flexShrink: 0 }}>
+              <ResponsiveContainer width={isMobile ? 130 : 200} height={isMobile ? 130 : 200}>
+                <PieChart>
+                  <Pie
+                    data={DONUT_DATA}
+                    cx="50%" cy="50%"
+                    innerRadius={isMobile ? 38 : 62} outerRadius={isMobile ? 58 : 92}
+                    dataKey="value" startAngle={90} endAngle={-270}
+                    strokeWidth={2} stroke={T.surface}
+                  >
+                    {DONUT_DATA.map((d, i) => <Cell key={i} fill={d.color} />)}
+                  </Pie>
+                  <Tooltip formatter={(v, n) => [`${v}%`, n]} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{
+                position: 'absolute', inset: 0, display: 'flex',
+                flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none',
+              }}>
+                <div style={{ fontFamily: DISPLAY, fontSize: isMobile ? 18 : 28, fontWeight: 700, color: T.primary }}>62%</div>
+                <div style={{ fontSize: isMobile ? 9 : 10, color: T.textMed, fontWeight: 600 }}>ABI Total</div>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '3px', marginTop: isMobile ? 0 : 8, flex: 1, width: isMobile ? 'auto' : '100%' }}>
+              {DONUT_DATA.map(d => (
+                <div key={d.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: d.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, color: T.textMed }}>{d.name}</span>
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: T.ink }}>{d.value}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </ChartCard>
+
+        {/* Line chart */}
+        <ChartCard title="TENDENCIA SHARE ABI VS COMPETENCIA (6 SEMANAS)">
+          <ResponsiveContainer width="100%" height={isMobile ? 180 : 220}>
+            <LineChart data={TREND_DATA} margin={{ top: 10, right: 16, left: -14, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={T.border} vertical={false} />
+              <XAxis dataKey="week" tick={{ fontSize: 10, fill: T.textMed }} axisLine={false} tickLine={false} />
+              <YAxis domain={[30, 75]} tickFormatter={v => `${v}%`} tick={{ fontSize: 10, fill: T.textMed }} axisLine={false} tickLine={false} />
+              <Tooltip formatter={(v, n) => [`${v}%`, n === 'abi' ? 'ABI Portfolio' : 'Competencia']} />
+              <Line type="monotone" dataKey="abi"  stroke={T.primary} strokeWidth={2.5} dot={{ r: 3, fill: T.primary }} name="ABI Portfolio" />
+              <Line type="monotone" dataKey="comp" stroke={T.textLow} strokeWidth={1.5} strokeDasharray="5 4" dot={false} name="Competencia" />
+            </LineChart>
+          </ResponsiveContainer>
+          <div style={{ display: 'flex', gap: 18, marginTop: 6 }}>
+            <LegendDot color={T.primary} label="ABI Portfolio" solid />
+            <LegendDot color={T.textLow} label="Competencia" dashed />
+          </div>
+        </ChartCard>
+      </div>
+
+      {/* Charts row 2: Bar + Radar */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.9fr 1fr', gap: 16, marginBottom: 16 }}>
+        {/* Horizontal bar chart */}
+        <ChartCard title="SHARE OF SHELF POR PDV">
+          {shelfData.length === 0 ? (
+            <div style={{ padding: 24, textAlign: 'center', color: T.textLow, fontSize: 12 }}>
+              Sin PDVs asignados aún
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={Math.max(180, shelfData.length * 44)}>
+              <BarChart data={shelfData} layout="vertical" margin={{ top: 0, right: 30, left: isMobile ? 4 : 10, bottom: 0 }}>
+                <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 10, fill: T.textMed }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" width={isMobile ? 90 : 110} tick={{ fontSize: isMobile ? 10 : 11, fill: T.ink }} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={T.border} />
+                <Tooltip formatter={v => [`${v}%`, 'Share']} />
+                <Bar dataKey="value" fill={T.primary} radius={[0, 4, 4, 0]} background={{ fill: `${T.primary}15`, radius: [0, 4, 4, 0] }} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </ChartCard>
+
+        {/* Radar chart */}
+        <ChartCard title="SCORECARD EJECUCIÓN">
+          <ResponsiveContainer width="100%" height={isMobile ? 260 : 220}>
+            <RadarChart data={RADAR_DATA} margin={{ top: 16, right: 36, left: 36, bottom: 16 }}>
+              <PolarGrid stroke={T.border} />
+              <PolarAngleAxis dataKey="subject" tick={{ fontSize: isMobile ? 10 : 10, fill: T.textMed }} />
+              <Radar dataKey="value" stroke={T.primary} fill={T.primary} fillOpacity={0.22} strokeWidth={2} />
+            </RadarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+
+      {/* GVM compliance table */}
+      {gvmStats.length > 0 && (
+        <ChartCard title="CUMPLIMIENTO POR GVM">
+          <div style={{ display: 'grid', gap: 10 }}>
+            {gvmStats.map(g => (
+              <div key={g.id}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Avatar initials={g.initials} color={g.color} size={26} />
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: T.ink }}>{g.name}</div>
+                      <div style={{ fontSize: 10, color: T.textMed }}>{getCountry(g.country).flag} {getCountry(g.country).code}</div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: g.pct >= 85 ? T.success : g.pct >= 50 ? T.warn : T.danger }}>
+                      {g.pct}%
+                    </span>
+                    <div style={{ fontSize: 10, color: T.textMed }}>{g.done}/{g.total} PDVs</div>
+                  </div>
+                </div>
+                <ProgressBar value={g.pct} color={g.pct >= 85 ? T.success : g.pct >= 50 ? T.warn : T.danger} height={6} />
+              </div>
+            ))}
+          </div>
+        </ChartCard>
+      )}
     </div>
   );
+}
 
-  async function handleExport(type) {
-    setExporting(type);
-    try {
-      const dateStr = new Date().toISOString().split('T')[0];
-      const gvmMap = Object.fromEntries(
-        filteredUsers.filter(u => u.role === 'gvm').map(u => [u.id, u.name])
-      );
+/* ── KPI Card ─────────────────────────────────────────────────────────────── */
+function KpiCard({ label, emoji, value, sub, trend, up, accent }) {
+  return (
+    <div style={{
+      background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14,
+      padding: '12px 14px', borderBottom: `3px solid ${accent}`,
+      display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0,
+    }} className="rise">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 9, fontWeight: 800, color: T.textMed, letterSpacing: '.3px', lineHeight: 1.3 }}>{label}</span>
+        <span style={{ fontSize: 16, flexShrink: 0, marginLeft: 4 }}>{emoji}</span>
+      </div>
+      <div style={{ fontFamily: DISPLAY, fontSize: 26, fontWeight: 700, color: T.ink, lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: 10, color: T.textMed }}>{sub}</div>
+      <div style={{ fontSize: 10, fontWeight: 700, color: up ? T.success : T.danger, display: 'flex', alignItems: 'center', gap: 3, marginTop: 1 }}>
+        <span>{up ? '▲' : '▼'}</span> {trend}
+      </div>
+    </div>
+  );
+}
 
-      if (type === 'coverage') {
-        const rows = filteredCatalog.map(p => ({
-          'ID PDV': p.id,
-          'Nombre': p.name,
-          'Dirección': p.addr || '',
-          'País': p.country || '',
-          'Estado': p.status || '',
-          'GVM Asignado': p.assigned_to ? (gvmMap[p.assigned_to] || 'Desconocido') : 'Sin asignar',
-          'Orden': p.order ?? '',
-        }));
-        downloadSheet(rows, 'Cobertura', `reporte-cobertura-${dateStr}.xlsx`);
+/* ── Chart Card wrapper ───────────────────────────────────────────────────── */
+function ChartCard({ title, children }) {
+  return (
+    <div style={{
+      background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: '16px 18px',
+      minWidth: 0,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <div style={{ width: 3, height: 14, background: T.primary, borderRadius: 2 }} />
+        <span style={{ fontSize: 11, fontWeight: 800, color: T.textMed, letterSpacing: '.4px' }}>{title}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
 
-      } else if (type === 'gvms') {
-        const gvms = filteredUsers.filter(u => u.role === 'gvm');
-        const rows = gvms.map(g => {
-          const pdvs = filteredCatalog.filter(p => p.assigned_to === g.id);
-          const done = pdvs.filter(p => p.status === 'done').length;
-          const total = pdvs.length;
-          return {
-            'GVM': g.name,
-            'País': g.country || '',
-            'PDVs Asignados': total,
-            'Completados': done,
-            'En Progreso': pdvs.filter(p => p.status === 'in_progress').length,
-            'Pendientes': pdvs.filter(p => p.status === 'pending').length,
-            'Cumplimiento %': total > 0 ? Math.round((done / total) * 100) : 0,
-          };
-        }).sort((a, b) => b['Cumplimiento %'] - a['Cumplimiento %']);
-        downloadSheet(rows, 'GVMs', `reporte-gvms-${dateStr}.xlsx`);
-
-      } else if (type === 'surveys') {
-        const surveys = await data.fetchSurveys(filterCountry ? { country: filterCountry } : {});
-        const pdvMap = Object.fromEntries(filteredCatalog.map(p => [p.id, p.name]));
-        const rows = surveys.map(s => ({
-          'ID Levantamiento': s.id,
-          'PDV': pdvMap[s.pdv_id] || s.pdv_id,
-          'País': s.country || '',
-          'Tipo': s.kind || '',
-          'Estado': s.status || '',
-          'GVM': gvmMap[s.created_by] || s.created_by || '',
-          'Fecha': new Date(s.created_at).toLocaleDateString('es'),
-          'Notas': s.notes || '',
-        }));
-        downloadSheet(rows, 'Levantamientos', `reporte-levantamientos-${dateStr}.xlsx`);
-
-      } else if (type === 'oos') {
-        const surveys = await data.fetchSurveys(filterCountry ? { country: filterCountry } : {});
-        const pdvMap = Object.fromEntries(filteredCatalog.map(p => [p.id, p.name]));
-        const rows = [];
-        for (const s of surveys) {
-          for (const item of (s.items || [])) {
-            if (item.oos) {
-              rows.push({
-                'PDV': pdvMap[s.pdv_id] || s.pdv_id,
-                'País': s.country || '',
-                'GVM': gvmMap[s.created_by] || s.created_by || '',
-                'SKU': item.sku || '',
-                'Fecha': new Date(s.created_at).toLocaleDateString('es'),
-              });
-            }
-          }
-        }
-        if (rows.length === 0) {
-          toast.info('No hay alertas OOS registradas para el período seleccionado.');
-          return;
-        }
-        downloadSheet(rows, 'OOS', `reporte-oos-${dateStr}.xlsx`);
-      }
-
-      toast.success('Reporte descargado correctamente.');
-    } catch (e) {
-      toast.error(`Error generando reporte: ${e.message}`);
-    } finally {
-      setExporting(null);
-    }
-  }
+/* ── PDV filter pill ─────────────────────────────────────────────────────── */
+function PdvPill({ label, active, onClick }) {
+  return (
+    <button onClick={onClick} className="press" style={{
+      border: `1.5px solid ${active ? T.primary : T.border}`,
+      background: active ? T.primary : T.surface,
+      color: active ? T.white : T.ink,
+      borderRadius: 20, padding: '6px 16px', fontSize: 12.5, fontWeight: active ? 700 : 500,
+      cursor: 'pointer', whiteSpace: 'nowrap',
+    }}>
+      {label}
+    </button>
+  );
 }
 
 function downloadSheet(rows, sheetName, filename) {

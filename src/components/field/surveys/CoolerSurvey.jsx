@@ -1,8 +1,7 @@
-import { useState, useContext } from 'react';
+import { useState } from 'react';
 import { T, FONT, DISPLAY } from '../../../lib/constants.jsx';
 import { useToast } from '../../Toaster.jsx';
 import { CheckCircle2, Loader2 } from 'lucide-react';
-import { CameraContext } from '../../../hooks/useCamera.js';
 import { uploadPhoto } from '../../../lib/supabase.js';
 import * as data from '../../../lib/data.js';
 import PhotoSection from './PhotoSection.jsx';
@@ -31,8 +30,7 @@ function YesNo({ value, onChange }) {
 }
 
 export default function CoolerSurvey({ pdv, user, onBack, onComplete, startedAt }) {
-  const toast   = useToast();
-  const camApi  = useContext(CameraContext);
+  const toast = useToast();
 
   const [equipId,   setEquipId]   = useState('');
   const [condition, setCondition] = useState(null);
@@ -45,15 +43,14 @@ export default function CoolerSurvey({ pdv, user, onBack, onComplete, startedAt 
   const [done,      setDone]      = useState(false);
 
   const handleSubmit = async () => {
-    if (!condition)        { toast.warn('Selecciona la condición de la nevera.'); return; }
-    if (photos.length === 0) { toast.warn('⚠️ Agrega al menos una foto de la nevera.'); return; }
+    if (photos.length === 0) { toast.warn('⚠️ Add at least one refrigerator photo.'); return; }
 
     setSaving(true);
     try {
       const surveyNotes = [
         `Equipo: ${equipId || 'N/A'}`,
-        `Condición: ${condition}`,
-        `Share nevera: ${share}%`,
+        `Condition: ${condition}`,
+        `Refrigerator share: ${share}%`,
         `Planograma: ${planogram === true ? 'Sí' : planogram === false ? 'No' : 'N/A'}`,
         `Branding: ${branding === true ? 'Sí' : branding === false ? 'No' : 'N/A'}`,
         notes,
@@ -69,15 +66,10 @@ export default function CoolerSurvey({ pdv, user, onBack, onComplete, startedAt 
         started_at: startedAt || null, completed_at: completedAt, duration_seconds: durationSeconds,
       });
 
-      await data.createSurveyItems([{
-        survey_id: survey.id, sku: equipId || 'N/A',
-        qty: share, oos: false, price_found: null, psv: null,
-      }]);
-
       // Subir todas las fotos
       for (const p of photos) {
-        const { url } = await uploadPhoto(p.file, `${pdv.id}-${Date.now()}`, 'neveras');
-        await data.createSurveyPhoto({ survey_id: survey.id, url });
+        const { url, path: storage_path } = await uploadPhoto(p.file, `${pdv.id}-${Date.now()}`, 'neveras');
+        await data.createSurveyPhoto({ survey_id: survey.id, url, storage_path });
       }
 
       setDone(true);
@@ -93,10 +85,10 @@ export default function CoolerSurvey({ pdv, user, onBack, onComplete, startedAt 
       <div style={{ textAlign: 'center', padding: 40, fontFamily: FONT }}>
         <CheckCircle2 size={48} color={T.success} style={{ margin: '0 auto 16px' }} />
         <div style={{ fontFamily: DISPLAY, fontSize: 22, color: T.ink, fontWeight: 600 }}>
-          ¡Nevera registrada!
+          Refrigerator saved!
         </div>
         <div style={{ fontSize: 13, color: T.textMed, marginTop: 6 }}>
-          {photos.length} foto{photos.length > 1 ? 's' : ''} adjuntada{photos.length > 1 ? 's' : ''}
+          {photos.length} photo{photos.length > 1 ? 's' : ''} attached
         </div>
       </div>
     );
@@ -104,7 +96,7 @@ export default function CoolerSurvey({ pdv, user, onBack, onComplete, startedAt 
 
   return (
     <div style={{ width: '100%', fontFamily: FONT }}>
-      <Header title="Neveras" subtitle={pdv.name} onBack={onBack} disabled={saving} />
+      <Header title="Refrigerator" subtitle={pdv.name} onBack={onBack} disabled={saving} />
 
       <div style={{ display: 'grid', gap: 14 }}>
 
@@ -114,8 +106,8 @@ export default function CoolerSurvey({ pdv, user, onBack, onComplete, startedAt 
           setPhotos={setPhotos}
           required={true}
           max={4}
-          label="FOTOS DE LA NEVERA"
-          hint="Captura frente, interior y etiquetas. Mínimo 1 foto obligatoria."
+          label="REFRIGERATOR PHOTOS"
+          hint="Capture front, interior and labels. Minimum 1 photo required."
         />
 
         {/* ID equipo */}
@@ -127,7 +119,7 @@ export default function CoolerSurvey({ pdv, user, onBack, onComplete, startedAt 
 
         {/* Condición */}
         <Card>
-          <Label>CONDICIÓN DE LA NEVERA</Label>
+          <Label>REFRIGERATOR CONDITION</Label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {CONDITIONS.map(c => (
               <button key={c.key} onClick={() => setCondition(c.key)} className="press" style={{
@@ -143,7 +135,7 @@ export default function CoolerSurvey({ pdv, user, onBack, onComplete, startedAt 
         {/* Share slider */}
         <Card>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <Label style={{ margin: 0 }}>SHARE DE NEVERA</Label>
+            <Label style={{ margin: 0 }}>REFRIGERATOR SHARE</Label>
             <span style={{ background: T.primarySoft, color: T.primary, fontWeight: 800, fontSize: 14, padding: '2px 10px', borderRadius: 7 }}>
               {share}%
             </span>
@@ -192,7 +184,7 @@ export default function CoolerSurvey({ pdv, user, onBack, onComplete, startedAt 
         }}>
           {saving
             ? <><Loader2 size={15} className="spin" /> Guardando…</>
-            : <><CheckCircle2 size={15} /> Guardar nevera ({photos.length} foto{photos.length !== 1 ? 's' : ''})</>}
+            : <><CheckCircle2 size={15} /> Save refrigerator ({photos.length} photo{photos.length !== 1 ? 's' : ''})</>}
         </button>
       </div>
     </div>

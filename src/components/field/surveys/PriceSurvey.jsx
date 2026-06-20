@@ -12,8 +12,8 @@ import { useState, useContext, useMemo } from 'react';
 import { T, FONT, DISPLAY, getProductsForCountry, getProductImage } from '../../../lib/constants.jsx';
 import { useToast } from '../../Toaster.jsx';
 import {
-  ChevronLeft, Camera, Loader2, Sparkles, CheckCircle2, X, Filter,
-  AlertCircle, ImageIcon,
+  ChevronLeft, Camera, Loader2, Sparkles, CheckCircle2, X,
+  AlertCircle, ImageIcon, ChevronDown,
 } from 'lucide-react';
 import { CameraContext }                         from '../../../hooks/useCamera.js';
 import { analyzePricePhotos, uploadPhoto }       from '../../../lib/supabase.js';
@@ -63,10 +63,10 @@ export default function PriceSurvey({ pdv, user, onBack, onComplete, startedAt }
   const [aiCount,   setAiCount]   = useState(0);
 
   /* ── UI ──────────────────────────────────────────────────────────────── */
-  const [filterGroup, setFilterGroup] = useState('todos');
-  const [notes,       setNotes]       = useState('');
-  const [saving,      setSaving]      = useState(false);
-  const [done,        setDone]        = useState(false);
+  const [showSkuList,  setShowSkuList]  = useState(false);
+  const [notes,        setNotes]        = useState('');
+  const [saving,       setSaving]       = useState(false);
+  const [done,         setDone]         = useState(false);
 
   /* ── Cámara ──────────────────────────────────────────────────────────── */
   const addPhoto = () => {
@@ -141,8 +141,7 @@ export default function PriceSurvey({ pdv, user, onBack, onComplete, startedAt }
   };
 
   /* ── Vistas filtradas ────────────────────────────────────────────────── */
-  const aiRows    = rows.filter(r => r.aiPrice !== null);
-  const filledRows = rows.filter(r => r.price_found !== '');
+  const filledRows  = rows.filter(r => r.price_found !== '');
 
   const visibleRows = useMemo(() => {
     if (filterGroup === 'etx')          return rows.filter(r => r.abi);
@@ -191,18 +190,18 @@ export default function PriceSurvey({ pdv, user, onBack, onComplete, startedAt }
       const filled = rows.filter(r => r.price_found !== '');
       if (filled.length > 0) {
         await data.createSurveyItems(filled.map(r => ({
-          survey_id:   survey.id,
-          sku:         r.sku,
-          price_found: parseFloat(r.price_found) || null,
-          psv:         r.psv,
-          abi:         r.abi,
-          brand:       r.brand,
+          survey_id: survey.id,
+          sku:       r.sku,
+          price:     parseFloat(r.price_found) || null,
+          psv:       r.psv,
+          is_abi:    r.abi,
+          brand:     r.brand,
         })));
       }
 
       for (const p of photos) {
-        const { url } = await uploadPhoto(p.file, `${pdv.id}-precio-${Date.now()}`, 'precios');
-        await data.createSurveyPhoto({ survey_id: survey.id, url });
+        const { url, path: storage_path } = await uploadPhoto(p.file, `${pdv.id}-precio-${Date.now()}`, 'precios');
+        await data.createSurveyPhoto({ survey_id: survey.id, url, storage_path });
       }
 
       setDone(true);
@@ -364,48 +363,48 @@ export default function PriceSurvey({ pdv, user, onBack, onComplete, startedAt }
         </div>
       )}
 
-      {/* ── FILTROS ──────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Filter size={13} color={T.textLow} />
-        {[
-          ['todos',       `Todos (${rows.length})`],
-          ['etx',         `ETX (${rows.filter(r => r.abi).length})`],
-          ['competencia', `Comp. (${rows.filter(r => !r.abi).length})`],
-          ...(aiRows.length > 0   ? [['ia',        `✨ IA (${aiRows.length})`]]              : []),
-          ...(filledRows.length < rows.length ? [['pendientes', `Sin precio (${rows.filter(r => r.price_found === '').length})`]] : []),
-        ].map(([v, l]) => (
-          <button key={v} onClick={() => setFilterGroup(v)} className="press" style={{
-            padding: '5px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-            border: `1px solid ${filterGroup === v ? (v === 'ia' ? '#8B5CF6' : T.primary) : T.border}`,
-            background: filterGroup === v ? (v === 'ia' ? '#F3F0FF' : T.primarySoft) : T.surface,
-            color:      filterGroup === v ? (v === 'ia' ? '#7C3AED'  : T.primaryDim)  : T.textMed,
-          }}>{l}</button>
-        ))}
-      </div>
-
       {/* ── TABLA ─────────────────────────────────────────────────────────── */}
       <div style={{
         background: T.surface, border: `1px solid ${T.border}`,
         borderRadius: 14, overflow: 'hidden', marginBottom: 16,
       }}>
-        {/* Cabecera */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1.4fr 56px 80px 52px',
-          padding: '9px 14px', background: T.surfaceAlt, gap: 8,
-          borderBottom: `1px solid ${T.border}`,
+        {/* Toggle */}
+        <button onClick={() => setShowSkuList(v => !v)} className="press" style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '11px 16px', background: T.surfaceAlt, gap: 8,
+          borderBottom: showSkuList ? `1px solid ${T.border}` : 'none',
+          border: 'none', cursor: 'pointer',
         }}>
-          {['SKU', 'PSV', 'Precio $', 'Δ'].map(h => (
-            <div key={h} style={{ fontSize: 10, fontWeight: 800, color: T.textMed, letterSpacing: '.3px' }}>{h}</div>
-          ))}
-        </div>
+          <span style={{ fontSize: 11, fontWeight: 800, color: T.textMed, letterSpacing: '.3px' }}>
+            LISTA DE SKUS ({rows.length}){filledRows.length > 0 ? ` · ${filledRows.length} con precio` : ''}
+          </span>
+          <ChevronDown size={14} color={T.textMed} style={{
+            transform: showSkuList ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform .25s ease',
+            flexShrink: 0,
+          }} />
+        </button>
 
-        {Object.keys(groups).length === 0 && (
+        {/* Column headers — only visible when expanded */}
+        {showSkuList && (
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1.4fr 56px 80px 52px',
+            padding: '6px 14px', background: T.bg, gap: 8,
+            borderBottom: `1px solid ${T.border}`,
+          }}>
+            {['SKU', 'PSV', 'Precio $', 'Δ'].map(h => (
+              <div key={h} style={{ fontSize: 10, fontWeight: 800, color: T.textMed, letterSpacing: '.3px' }}>{h}</div>
+            ))}
+          </div>
+        )}
+
+        {showSkuList && Object.keys(groups).length === 0 && (
           <div style={{ padding: 24, textAlign: 'center', color: T.textLow, fontSize: 12 }}>
             No hay productos con ese filtro
           </div>
         )}
 
-        {Object.entries(groups).map(([brand, products]) => (
+        {showSkuList && Object.entries(groups).map(([brand, products]) => (
           <div key={brand}>
             {/* Marca */}
             <div style={{
@@ -422,8 +421,7 @@ export default function PriceSurvey({ pdv, user, onBack, onComplete, startedAt }
             </div>
 
             {products.map((row, idx) => {
-              const isAI  = row.aiPrice !== null;
-              const delta = priceDelta(parseFloat(row.price_found), row.psv);
+              const isAI = row.aiPrice !== null;
               return (
                 <div key={row.sku} style={{
                   display: 'grid', gridTemplateColumns: '1.4fr 56px 80px 52px',

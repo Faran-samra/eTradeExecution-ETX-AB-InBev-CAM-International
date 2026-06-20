@@ -55,17 +55,31 @@ export async function getCurrentUser() {
 }
 
 // =====================================================================
-// Subida de fotos al Storage
+// Subida de fotos — Cloudflare R2 via Netlify Function
 // =====================================================================
 export async function uploadPhoto(file, surveyId, kind) {
-  const ext = (file.type?.split('/')[1] || 'jpg').replace(/[^a-z0-9]/g, '');
-  const path = `surveys/${surveyId}/${kind}-${Date.now()}.${ext}`;
-  const { error } = await supabase.storage
-    .from('survey-photos')
-    .upload(path, file, { cacheControl: '3600', upsert: false });
-  if (error) throw error;
-  const { data } = supabase.storage.from('survey-photos').getPublicUrl(path);
-  return { path, url: data.publicUrl };
+  const ext      = (file.type?.split('/')[1] || 'jpg').replace(/[^a-z0-9]/g, '');
+  const filename = `${surveyId}/${kind}-${Date.now()}.${ext}`;
+
+  const base64 = await new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload  = () => res(String(reader.result).split(',')[1]);
+    reader.onerror = () => rej(new Error('Error al leer imagen'));
+    reader.readAsDataURL(file);
+  });
+
+  const resp = await fetch('/.netlify/functions/upload-photo', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ base64, contentType: file.type || 'image/jpeg', filename }),
+  });
+
+  if (!resp.ok) {
+    const msg = await resp.text();
+    throw new Error(`Error al subir foto: ${msg}`);
+  }
+
+  return resp.json(); // { url, path }
 }
 
 // =====================================================================

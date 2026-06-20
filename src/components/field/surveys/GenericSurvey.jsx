@@ -40,8 +40,8 @@ export default function GenericSurvey({ kind, pdv, user, onBack, onComplete, sta
 
       for (const p of photos) {
         const tempId = `${pdv.id}-${Date.now()}`;
-        const { url } = await uploadPhoto(p.file, tempId, kind);
-        await data.createSurveyPhoto({ survey_id: survey.id, url });
+        const { url, path: storage_path } = await uploadPhoto(p.file, tempId, kind);
+        await data.createSurveyPhoto({ survey_id: survey.id, url, storage_path });
       }
 
       setDone(true);

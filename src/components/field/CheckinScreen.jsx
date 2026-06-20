@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useRef } from 'react';
 import { T, FONT, DISPLAY, haversine } from '../../lib/constants.jsx';
 import { ChevronLeft, MapPin, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import { CameraContext } from '../../hooks/useCamera.js';
@@ -15,10 +15,11 @@ export default function CheckinScreen({ pdv, onBack, onComplete, setCatalog }) {
   const [distance, setDistance] = useState(null);
   const [loading, setLoading] = useState(false);
   const [locationError, setLocationError] = useState(null);
-  const [photoUrl, setPhotoUrl] = useState(null);
   const [geoWarning, setGeoWarning] = useState(false);
   const camApi = useContext(CameraContext);
-  const [animating, setAnimating] = useState(false);
+  // Store location in a ref so onCapture closure always has the latest value
+  const locationRef = useRef(null);
+  const distanceRef = useRef(null);
 
   const handleGetLocation = () => {
     setLoading(true); setLocationError(null);
@@ -30,6 +31,8 @@ export default function CheckinScreen({ pdv, onBack, onComplete, setCatalog }) {
       (pos) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         const dist = haversine(loc, { lat: pdv.lat, lng: pdv.lng });
+        locationRef.current = loc;
+        distanceRef.current = dist;
         setLocation(loc); setDistance(dist);
         if (dist > GEOFENCE_TOLERANCE) setGeoWarning(true);
         setStep('photo'); setLoading(false);
@@ -43,40 +46,38 @@ export default function CheckinScreen({ pdv, onBack, onComplete, setCatalog }) {
     camApi.open({
       pdvId: pdv.id, kind: 'checkin',
       onCapture: async (file) => {
+        setLoading(true);
+        let capturedUrl = null;
         try {
-          setLoading(true);
-          if (!navigator.onLine) { setPhotoUrl(null); setStep('summary'); return; }
-          const { url } = await uploadPhoto(file, pdv.id, 'checkin');
-          setPhotoUrl(url); setStep('summary');
+          if (navigator.onLine) {
+            const { url } = await uploadPhoto(file, pdv.id, 'checkin');
+            capturedUrl = url;
+          }
         } catch (e) {
-          if (!navigator.onLine) { setPhotoUrl(null); setStep('summary'); }
-          else toast.error(`Error cargando foto: ${e.message}`);
-        } finally { setLoading(false); }
+          if (navigator.onLine) {
+            toast.error(`Error cargando foto: ${e.message}`);
+            setLoading(false);
+            return;
+          }
+        }
+        // Auto-confirm immediately — no summary screen needed
+        const loc  = locationRef.current;
+        const dist = distanceRef.current;
+        const backgroundWork = async () => {
+          await data.createCheckin({
+            pdvId: pdv.id,
+            lat: loc.lat, lng: loc.lng,
+            distanceMeters: dist,
+            photoUrl: capturedUrl,
+          });
+          setCatalog(prev => prev.map(p =>
+            p.id === pdv.id ? { ...p, status: 'in_progress' } : p
+          ));
+        };
+        setLoading(false);
+        onComplete(backgroundWork);
       },
     });
-  };
-
-  /* ── Confirmar: regresa INMEDIATAMENTE al itinerario y procesa en background ── */
-  const handleConfirm = () => {
-    const checkinData = {
-      pdvId: pdv.id,
-      lat: location.lat,
-      lng: location.lng,
-      distanceMeters: distance,
-      photoUrl,
-    };
-    const backgroundWork = async () => {
-      await data.createCheckin(checkinData);
-      setCatalog(prev => prev.map(p =>
-        p.id === pdv.id ? { ...p, status: 'in_progress' } : p
-      ));
-    };
-    // Animación morphing antes de navegar
-    setAnimating(true);
-    setTimeout(() => {
-      setAnimating(false);
-      onComplete(backgroundWork);
-    }, 650);
   };
 
   return (
@@ -164,63 +165,6 @@ export default function CheckinScreen({ pdv, onBack, onComplete, setCatalog }) {
         </div>
       )}
 
-      {/* Step 3: Confirmar */}
-      {step === 'summary' && (
-        <div>
-          {photoUrl && (
-            <div style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 16, border: `1px solid ${T.border}` }}>
-              <img src={photoUrl} alt="Fachada" style={{ width: '100%', height: 'auto', display: 'block' }} />
-            </div>
-          )}
-          <div style={{
-            background: T.infoSoft, border: `1px solid ${T.info}30`, borderRadius: 12,
-            padding: '11px 14px', marginBottom: 14, display: 'flex', gap: 10, alignItems: 'flex-start',
-            fontSize: 12, color: T.info, fontWeight: 600, lineHeight: 1.5,
-          }}>
-            <Loader2 size={14} style={{ flexShrink: 0, marginTop: 2 }} />
-            Al confirmar, el check-in se procesará en segundo plano. Podrás continuar con otros PDVs inmediatamente.
-          </div>
-          <div style={{
-            background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: 16, marginBottom: 16,
-          }}>
-            <CheckinRow label="PDV"       value={pdv.name} />
-            <CheckinRow label="Distancia" value={`${distance}m del PDV`} />
-            <CheckinRow label="Foto"      value={photoUrl ? '✓ Capturada' : '— Sin foto (sin conexión)'} />
-          </div>
-          <button
-            onClick={handleConfirm}
-            disabled={animating}
-            className="press"
-            style={{
-              width: '100%', padding: 14, border: 'none',
-              background: `linear-gradient(135deg, ${T.success}, #1E8B52)`,
-              color: T.white, fontWeight: 800, fontSize: 14.5,
-              cursor: animating ? 'default' : 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              boxShadow: '0 12px 26px -12px rgba(44,157,99,.6)',
-              animation: animating ? 'morphCheckin .65s cubic-bezier(.22,1,.36,1) both' : 'none',
-              borderRadius: 12,
-            }}
-          >
-            {animating
-              ? <><svg style={{animation:'spin .8s linear infinite'}} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Registrando…</>
-              : <><CheckCircle2 size={18} /> Confirmar y continuar</>}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CheckinRow({ label, value }) {
-  return (
-    <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      paddingBottom: 10, marginBottom: 10,
-      borderBottom: `1px solid ${T.border}`,
-    }}>
-      <span style={{ fontSize: 12, fontWeight: 600, color: T.textMed }}>{label}</span>
-      <span style={{ fontSize: 13, color: T.ink, fontWeight: 600 }}>{value}</span>
     </div>
   );
 }

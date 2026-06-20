@@ -165,7 +165,7 @@ export default function FieldApp({
 
   const handleCheckinBackground = useCallback((pdvId, backgroundWork) => {
     setCheckedIn(m => ({ ...m, [pdvId]: 'processing' }));
-    setScreen('itinerary');
+    setScreen('pdvDetail');
     toast.info('Check-in enviado · verificando en segundo plano…');
     if (typeof backgroundWork === 'function') {
       backgroundWork().catch(e => console.warn('Background checkin failed:', e));
@@ -194,6 +194,7 @@ export default function FieldApp({
           <ItineraryScreen
             user={user} catalog={catalog} checkedIn={checkedIn}
             onSelectPdv={handleSelectPdv}
+            onCheckinPdv={handleStartCheckin}
             onPoolClick={() => setScreen('pool')}
             onNewPdv={() => setShowNewPdv(true)}
           />
@@ -215,6 +216,7 @@ export default function FieldApp({
             onBack={() => setScreen('itinerary')}
             onCheckin={() => handleStartCheckin(selectedPdv)}
             onStartSurvey={handleStartSurvey}
+            setCatalog={setCatalog}
           />
         )}
 

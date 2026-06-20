@@ -27,10 +27,10 @@ import { Tag, Boxes, ThermometerSun, LayoutGrid, Megaphone, Eye } from 'lucide-r
 export const SURVEY_KINDS = [
   { key: 'precios',     label: 'Precios',       color: T.primary, icon: Tag },
   { key: 'inventario',  label: 'Inventario',    color: T.navy, icon: Boxes },
-  { key: 'neveras',     label: 'Neveras',       color: T.info, icon: ThermometerSun },
+  { key: 'neveras',     label: 'Refrigerator',      color: T.info, icon: ThermometerSun },
   { key: 'gondolas',    label: 'Góndolas',      color: T.success, icon: LayoutGrid },
   { key: 'pop',         label: 'Material POP',  color: T.warn, icon: Megaphone },
-  { key: 'competencia', label: 'Competencia',   color: T.danger, icon: Eye },
+  { key: 'competencia', label: 'Acciones de la Competencia', color: T.danger, icon: Eye },
 ];
 
 /* ── ETX Logo: órbita + satélite + barras KPI ──────────────────────────────── */

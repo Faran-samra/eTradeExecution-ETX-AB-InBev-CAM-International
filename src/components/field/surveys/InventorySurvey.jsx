@@ -1,7 +1,7 @@
 import { useState, useMemo, useContext } from 'react';
-import { T, FONT, DISPLAY, getProductsForCountry, getProductImage } from '../../../lib/constants.jsx';
+import { T, FONT, DISPLAY, getProductsForCountry } from '../../../lib/constants.jsx';
 import { useToast } from '../../Toaster.jsx';
-import { ChevronLeft, Plus, Minus, CheckCircle2, Loader2, Filter, Camera, Sparkles, X } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, Loader2, Camera, Sparkles, X } from 'lucide-react';
 import { CameraContext } from '../../../hooks/useCamera.js';
 import { uploadPhoto, analyzeInventoryPhotos } from '../../../lib/supabase.js';
 import * as data from '../../../lib/data.js';
@@ -35,10 +35,9 @@ export default function InventorySurvey({ pdv, user, onBack, onComplete, started
   const [analyzing, setAnalyzing] = useState(false);
   const [aiDone,    setAiDone]    = useState(false); // si ya corrió la IA
 
-  const [filterGroup, setFilterGroup] = useState('todos');
-  const [notes,       setNotes]       = useState('');
-  const [saving,      setSaving]      = useState(false);
-  const [done,        setDone]        = useState(false);
+  const [notes,  setNotes]  = useState('');
+  const [saving, setSaving] = useState(false);
+  const [done,   setDone]   = useState(false);
 
   /* ── Cámara ─────────────────────────────────────────────────────────── */
   const addPhoto = () => {
@@ -89,47 +88,9 @@ export default function InventorySurvey({ pdv, user, onBack, onComplete, started
     }
   };
 
-  /* ── Tabla ───────────────────────────────────────────────────────────── */
-  const setQty = (sku, delta) => {
-    setRows(prev => prev.map(r => {
-      if (r.sku !== sku) return r;
-      const next = Math.max(0, r.qty + delta);
-      return { ...r, qty: next, oos: next === 0 ? r.oos : false };
-    }));
-  };
-
-  const toggleOos = (sku) => {
-    setRows(prev => prev.map(r =>
-      r.sku !== sku ? r : { ...r, oos: !r.oos, qty: !r.oos ? 0 : r.qty }
-    ));
-  };
-
-  const clearAiSuggestion = (sku) => {
-    setRows(prev => prev.map(r =>
-      r.sku !== sku ? r : { ...r, aiQty: null }
-    ));
-  };
-
-  /* ── Vistas filtradas ────────────────────────────────────────────────── */
-  const visibleRows = useMemo(() => {
-    if (filterGroup === 'etx')         return rows.filter(r => r.abi);
-    if (filterGroup === 'competencia') return rows.filter(r => !r.abi);
-    if (filterGroup === 'ia')          return rows.filter(r => r.aiQty !== null);
-    return rows;
-  }, [rows, filterGroup]);
-
-  const groups = useMemo(() => {
-    const map = {};
-    visibleRows.forEach(r => {
-      if (!map[r.brand]) map[r.brand] = [];
-      map[r.brand].push(r);
-    });
-    return map;
-  }, [visibleRows]);
-
-  const oosRows      = rows.filter(r => r.oos);
-  const touchedRows  = rows.filter(r => r.qty > 0 || r.oos);
-  const aiRows       = rows.filter(r => r.aiQty !== null);
+  const oosRows     = rows.filter(r => r.oos);
+  const touchedRows = rows.filter(r => r.qty > 0 || r.oos);
+  const aiRows      = rows.filter(r => r.aiQty !== null);
 
   /* ── Guardar ─────────────────────────────────────────────────────────── */
   const handleSubmit = async () => {
@@ -153,14 +114,16 @@ export default function InventorySurvey({ pdv, user, onBack, onComplete, started
         duration_seconds: durationSeconds,
       });
 
-      await data.createSurveyItems(rows.map(r => ({
-        survey_id: survey.id, sku: r.sku, qty: r.qty, oos: r.oos,
-      })));
+      if (touchedRows.length > 0) {
+        await data.createSurveyItems(touchedRows.map(r => ({
+          survey_id: survey.id, sku: r.sku, qty: r.qty, oos: r.oos,
+        })));
+      }
 
       // Subir fotos si las hay
       for (const p of photos) {
-        const { url } = await uploadPhoto(p.file, `${pdv.id}-inv-${Date.now()}`, 'inventario');
-        await data.createSurveyPhoto({ survey_id: survey.id, url });
+        const { url, path: storage_path } = await uploadPhoto(p.file, `${pdv.id}-inv-${Date.now()}`, 'inventario');
+        await data.createSurveyPhoto({ survey_id: survey.id, url, storage_path });
       }
 
       setDone(true);
@@ -329,141 +292,6 @@ export default function InventorySurvey({ pdv, user, onBack, onComplete, started
         </div>
       )}
 
-      {/* ── Filtros ──────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Filter size={13} color={T.textLow} />
-        {[
-          ['todos',        `Todos (${rows.length})`],
-          ['etx',          `ETX (${rows.filter(r => r.abi).length})`],
-          ['competencia',  `Comp. (${rows.filter(r => !r.abi).length})`],
-          ...(aiRows.length > 0 ? [['ia', `✨ IA (${aiRows.length})`]] : []),
-        ].map(([v, l]) => (
-          <button key={v} onClick={() => setFilterGroup(v)} className="press" style={{
-            padding: '5px 11px', borderRadius: 8,
-            border: `1px solid ${filterGroup === v ? (v === 'ia' ? '#8B5CF6' : T.primary) : T.border}`,
-            background: filterGroup === v ? (v === 'ia' ? '#F3F0FF' : T.primarySoft) : T.surface,
-            color: filterGroup === v ? (v === 'ia' ? '#7C3AED' : T.primaryDim) : T.textMed,
-            fontSize: 11, fontWeight: 700, cursor: 'pointer',
-          }}>{l}</button>
-        ))}
-      </div>
-
-      {/* ── Tabla de inventario ──────────────────────────────────────────── */}
-      <div style={{
-        background: T.surface, border: `1px solid ${T.border}`,
-        borderRadius: 14, overflow: 'hidden', marginBottom: 16,
-      }}>
-        {/* Cabecera */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1.5fr 120px 46px',
-          padding: '9px 14px', background: T.surfaceAlt, gap: 8,
-          borderBottom: `1px solid ${T.border}`,
-        }}>
-          {['SKU', 'Unidades', 'OOS'].map(h => (
-            <div key={h} style={{ fontSize: 10, fontWeight: 800, color: T.textMed, letterSpacing: '.3px' }}>{h}</div>
-          ))}
-        </div>
-
-        {Object.keys(groups).length === 0 && (
-          <div style={{ padding: 24, textAlign: 'center', color: T.textLow, fontSize: 12 }}>
-            No hay productos con ese filtro
-          </div>
-        )}
-
-        {Object.entries(groups).map(([brand, products]) => (
-          <div key={brand}>
-            {/* Separador de marca */}
-            <div style={{
-              padding: '6px 14px', background: T.bg,
-              borderBottom: `1px solid ${T.border}`, borderTop: `1px solid ${T.border}`,
-              fontSize: 10.5, fontWeight: 800, color: T.textMed, letterSpacing: '.4px',
-              display: 'flex', alignItems: 'center', gap: 7,
-            }}>
-              <span style={{
-                width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                background: products[0].abi ? T.primary : T.textLow,
-              }} />
-              {brand.toUpperCase()}
-              {products[0].abi && (
-                <span style={{ background: T.primarySoft, color: T.primaryDim, fontSize: 9, fontWeight: 800, padding: '1px 6px', borderRadius: 4 }}>ETX</span>
-              )}
-            </div>
-
-            {products.map((row, idx) => {
-              const prod    = countryProducts.find(p => p.sku === row.sku);
-              const isAI    = row.aiQty !== null;
-              return (
-                <div key={row.sku} style={{
-                  display: 'grid', gridTemplateColumns: '1.5fr 120px 46px',
-                  padding: '9px 14px', gap: 8, alignItems: 'center',
-                  borderBottom: idx < products.length - 1 ? `1px solid ${T.border}` : 'none',
-                  background: row.oos ? T.dangerSoft : isAI ? '#FAFAFF' : 'transparent',
-                }}>
-
-                  {/* SKU + imagen */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {getProductImage(row.sku)
-                      ? <img src={getProductImage(row.sku)} alt={prod?.name || row.sku}
-                          style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 7, background: T.bg, flexShrink: 0 }}
-                          onError={e => { e.target.style.display = 'none'; }} />
-                      : <div style={{ width: 32, height: 32, borderRadius: 7, background: T.surfaceAlt, flexShrink: 0 }} />
-                    }
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                        <div style={{ fontSize: 12, color: row.oos ? T.danger : T.ink, fontWeight: 600, lineHeight: 1.3 }}>
-                          {prod?.name || row.sku}
-                        </div>
-                        {/* Badge IA */}
-                        {isAI && (
-                          <button onClick={() => clearAiSuggestion(row.sku)} title="Quitar sugerencia IA" style={{
-                            display: 'flex', alignItems: 'center', gap: 3,
-                            fontSize: 8.5, fontWeight: 800, padding: '1px 5px', borderRadius: 4,
-                            background: '#F3F0FF', color: '#7C3AED', border: '1px solid #DDD6FE',
-                            cursor: 'pointer',
-                          }}>
-                            ✨ IA
-                          </button>
-                        )}
-                      </div>
-                      {prod && (
-                        <div style={{ fontSize: 10, color: T.textLow, marginTop: 1 }}>{prod.pack} · {prod.size}ml</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Stepper */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <button onClick={() => setQty(row.sku, -1)} disabled={row.oos || row.qty === 0}
-                      className="press" style={stepBtn(row.oos || row.qty === 0)}>
-                      <Minus size={11} />
-                    </button>
-                    <span style={{
-                      minWidth: 30, textAlign: 'center', fontSize: 14, fontWeight: 800,
-                      color: row.oos ? T.danger : isAI && row.qty > 0 ? '#7C3AED' : T.ink,
-                    }}>
-                      {row.oos ? '—' : row.qty}
-                    </span>
-                    <button onClick={() => setQty(row.sku, 1)} disabled={row.oos}
-                      className="press" style={stepBtn(row.oos)}>
-                      <Plus size={11} />
-                    </button>
-                  </div>
-
-                  {/* OOS toggle */}
-                  <button onClick={() => toggleOos(row.sku)} className="press" style={{
-                    width: 38, height: 24, borderRadius: 6, border: 'none', cursor: 'pointer',
-                    background: row.oos ? T.danger : T.border,
-                    color: T.white, fontSize: 9, fontWeight: 800, letterSpacing: '.3px',
-                  }}>
-                    {row.oos ? 'OOS' : 'ok'}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-
       {/* Notas */}
       <div style={{ marginBottom: 16 }}>
         <label style={{ fontSize: 11, fontWeight: 700, color: T.textMed, letterSpacing: '.3px', display: 'block', marginBottom: 6 }}>
@@ -522,9 +350,3 @@ function Header({ title, subtitle, onBack, disabled }) {
     </div>
   );
 }
-
-const stepBtn = (disabled) => ({
-  width: 26, height: 26, borderRadius: 7, border: `1px solid ${T.border}`,
-  background: disabled ? T.bg : T.surface, color: disabled ? T.textLow : T.ink,
-  cursor: disabled ? 'default' : 'pointer', display: 'grid', placeItems: 'center', padding: 0,
-});

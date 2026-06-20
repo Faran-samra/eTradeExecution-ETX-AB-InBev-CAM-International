@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '../Toaster.jsx';
 import { T, FONT, DISPLAY, SURVEY_KINDS, getCountry } from '../../lib/constants.jsx';
-import { ChevronLeft, MapPin, Store, BarChart3, CheckCircle2, Clock, ChevronRight, Loader2, LogOut } from 'lucide-react';
+import { ChevronLeft, MapPin, Store, BarChart3, CheckCircle2, Clock, ChevronRight, ChevronDown, Loader2, LogOut } from 'lucide-react';
 import { fetchSurveys, checkoutPdv } from '../../lib/data.js';
 
-export default function PdvDetail({ pdv, checkedInStatus, onBack, onCheckin, onStartSurvey }) {
+export default function PdvDetail({ pdv, checkedInStatus, onBack, onCheckin, onStartSurvey, setCatalog }) {
   const country = getCountry(pdv.country);
   const checkedIn   = !!checkedInStatus;
   const isProcessing = checkedInStatus === 'processing';
@@ -15,18 +15,18 @@ export default function PdvDetail({ pdv, checkedInStatus, onBack, onCheckin, onS
   const canSurvey   = pdv.status === 'in_progress' || pdv.status === 'done' || checkedIn;
   const toast = useToast();
   const [checkingOut, setCheckingOut] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
   const [completedKinds, setCompletedKinds] = useState(new Set());
 
-  const allSurveysDone = completedKinds.size >= 6; // 6 tipos de levantamiento
-  const canCheckout = canSurvey && allSurveysDone && pdv.status !== 'done';
+  const canCheckout = canSurvey && completedKinds.size >= 1 && pdv.status !== 'done';
 
   const handleCheckout = async () => {
     setCheckingOut(true);
     try {
       await checkoutPdv(pdv.id);
+      setCatalog?.(prev => prev.map(p => p.id === pdv.id ? { ...p, status: 'done' } : p));
       toast.success(`✅ Visita a "${pdv.name}" completada`);
-      // Actualizar estado local del PDV
       setTimeout(() => onBack(), 1200);
     } catch (e) {
       toast.error(`Error al cerrar visita: ${e.message}`);
@@ -112,13 +112,29 @@ export default function PdvDetail({ pdv, checkedInStatus, onBack, onCheckin, onS
       {/* Datos del PDV */}
       <div style={{
         background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14,
-        padding: 16, marginBottom: 18, display: 'grid', gap: 12,
+        marginBottom: 18, overflow: 'hidden',
       }} className="rise">
-        <DetailRow icon={MapPin}   label="Dirección"   value={pdv.addr} />
-        <DetailRow icon={Store}    label="Categoría"   value={pdv.cat} />
-        <DetailRow icon={BarChart3} label="Canal"      value={pdv.channel} />
-        <DetailRow icon={Store}    label="Distribuidor" value={pdv.dist} />
-        <DetailRow icon={MapPin}   label="Coordenadas" value={`${(pdv.lat||0).toFixed(4)}, ${(pdv.lng||0).toFixed(4)}`} />
+        <button onClick={() => setShowDetails(v => !v)} className="press" style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
+        }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: T.textMed, letterSpacing: '.3px' }}>
+            INFORMACIÓN DEL PDV
+          </span>
+          <ChevronDown size={16} color={T.textMed} style={{
+            transform: showDetails ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform .25s ease',
+          }} />
+        </button>
+        {showDetails && (
+          <div style={{ padding: '0 16px 16px', display: 'grid', gap: 12 }}>
+            <DetailRow icon={MapPin}    label="Dirección"    value={pdv.addr} />
+            <DetailRow icon={Store}     label="Categoría"    value={pdv.cat} />
+            <DetailRow icon={BarChart3} label="Canal"        value={pdv.channel} />
+            <DetailRow icon={Store}     label="Distribuidor" value={pdv.dist} />
+            <DetailRow icon={MapPin}    label="Coordenadas"  value={`${(pdv.lat||0).toFixed(4)}, ${(pdv.lng||0).toFixed(4)}`} />
+          </div>
+        )}
       </div>
 
       {/* Levantamientos */}

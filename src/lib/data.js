@@ -154,15 +154,14 @@ export async function createSurveyItems(items) {
   if (error) throw error;
 }
 
-export async function createSurveyPhoto({ survey_id, url, path = null }) {
+export async function createSurveyPhoto({ survey_id, url, storage_path = null }) {
   if (!navigator.onLine) {
-    // When offline we can't upload storage; flush the buffered survey without photo
     if (_offlineSurveyBuf.has(survey_id)) {
       await _flushOfflineSurvey(survey_id);
     }
     return;
   }
-  const { error } = await supabase.from('survey_photos').insert({ survey_id, url, path });
+  const { error } = await supabase.from('survey_photos').insert({ survey_id, url, storage_path });
   if (error) throw error;
 }
 

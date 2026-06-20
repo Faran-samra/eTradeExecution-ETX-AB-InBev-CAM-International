@@ -236,16 +236,11 @@ function AppInner() {
             }}>
               <ETXLogo size={26} />
             </div>
-            <div>
-              <div className="brand-grad" style={{
-                fontFamily: "'Fraunces', Georgia, serif", fontWeight: 700,
-                fontSize: 17, lineHeight: 1,
-              }}>
-                eTradeExecution
-              </div>
-              <div style={{ fontSize: 10.5, letterSpacing: '1.6px', color: 'var(--primary-dim)', fontWeight: 700, marginTop: 3 }}>
-                ETX · CAM INTERNATIONAL
-              </div>
+            <div className="brand-grad" style={{
+              fontFamily: "'Fraunces', Georgia, serif", fontWeight: 700,
+              fontSize: 17, lineHeight: 1,
+            }}>
+              eTradeExecution
             </div>
           </div>
 
